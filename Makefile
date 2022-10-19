@@ -6,7 +6,7 @@ CROSS_OPTS :=
 .PHONY: all install install_autostart uninstall
 all:	servoblaster.ko
 
-servoblaster.ko:	servoblaster.c servoblaster.h
+servoblaster.ko:	servoblaster.c
 	@[ -d ${KERNEL_TREE} ] || { echo "Edit Makefile to set KERNEL_TREE to point at your kernel"; exit 1; }
 	@[ -e ${KERNEL_TREE}/Module.symvers ] || { echo "KERNEL_TREE/Module.symvers does not exist, you need to configure and compile your kernel"; exit 1; }
 	make -C ${KERNEL_TREE} ${CROSS_OPTS} M=$(PWD) modules
@@ -34,7 +34,6 @@ uninstall:
 	@sudo rm -f /etc/udev/rules.d/20-servoblaster.rules
 	@sudo rm -f $(INSTALL_PATH)/servoblaster.ko
 	@sudo depmod -a
-	
+
 clean:
 	make -C ${KERNEL_TREE} ${CROSS_OPTS} M=$(PWD) clean
-
