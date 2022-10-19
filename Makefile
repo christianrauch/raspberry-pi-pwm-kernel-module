@@ -1,5 +1,5 @@
-KERNEL_TREE := /home/richard/raspberrypi/linux
-INSTALL_PATH := /lib/modules/$(shell /bin/uname -r)/kernel/drivers/misc/servoblaster
+KERNEL_TREE := /lib/modules/$(shell uname -r)/build
+INSTALL_PATH := ${KERNEL_TREE}/../kernel/drivers/misc/servoblaster
 #CROSS_OPTS := CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- ARCH=arm
 CROSS_OPTS :=
 
