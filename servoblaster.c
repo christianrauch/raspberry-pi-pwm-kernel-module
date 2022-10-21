@@ -139,7 +139,11 @@ static uint8_t servo2gpio[] = {
 // Per-servo timeouts, so we can shut down a servo output after some period
 // without a new command - some people want this because the report servos
 // overheating after a time.
-static struct timer_list idle_timer[NUM_SERVOS];
+struct timer_data {
+    struct timer_list timer;
+    unsigned long servo;
+};
+static struct timer_data idle_timer[NUM_SERVOS];
 
 // This struct is used to store all temporary data associated with a given
 // open() of /dev/servoblaster
@@ -186,10 +190,11 @@ static int idle_timeout = 0;
 // algorithm has a special case for a count of zero.
 static int servo_pos[NUM_SERVOS] = { 0 };
 
-static void servo_timeout(unsigned long servo)
+static void servo_timeout(struct timer_list *t)
 {
 	// Clear GPIO output next time round
-	ctl->cb[servo*4+0].dst = ((GPIO_BASE + GPCLR0*4) & 0x00ffffff) | 0x7e000000;
+	const struct timer_data *tmd = from_timer(tmd, t, timer);
+	ctl->cb[tmd->servo*4+0].dst = ((GPIO_BASE + GPCLR0*4) & 0x00ffffff) | 0x7e000000;
 }
 
 // Wait until we're not processing the given servo (actually wait until
@@ -239,7 +244,7 @@ int init_module(void)
 	}
 
 	for (i = 0; i < NUM_SERVOS; i++)
-		setup_timer(idle_timer + i, servo_timeout, i);
+		timer_setup(&idle_timer[i].timer, servo_timeout, 0);
 
 	if (idle_timeout && idle_timeout < 20) {
 		printk(KERN_WARNING "ServoBlaster: Increased idle timeout to minimum of 20ms\n");
@@ -364,7 +369,7 @@ void cleanup_module(void)
 	// Take care to stop servos with outputs low, so we don't get
 	// spurious movement on module unload
 	for (servo = 0; servo < NUM_SERVOS; servo++) {
-		del_timer(idle_timer + servo);
+		del_timer(&idle_timer[servo].timer);
 		// Wait until we're not driving this servo
 		if (wait_for_servo(servo))
 			break;
@@ -447,7 +452,7 @@ static int set_servo(int servo, int cnt)
 		return -EINTR;
 
 	if (idle_timeout)
-		mod_timer(idle_timer + servo, jiffies + msecs_to_jiffies(idle_timeout));
+		mod_timer(&idle_timer[servo].timer, jiffies + msecs_to_jiffies(idle_timeout));
 
 	// Normally, the first GPIO transfer sets the output, while the second
 	// clears it after a delay.  For the special case of a delay of 0, we
