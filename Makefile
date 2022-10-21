@@ -3,6 +3,8 @@ INSTALL_PATH := ${KERNEL_TREE}/../kernel/drivers/misc/servoblaster
 #CROSS_OPTS := CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- ARCH=arm
 CROSS_OPTS :=
 
+EXTRA_CFLAGS := -I/usr/src/linux-headers-$(shell uname -r)/arch/arm/mach-ixp4xx/include/
+
 .PHONY: all install install_autostart uninstall
 all:	servoblaster.ko
 
