@@ -48,7 +48,6 @@
 #include <linux/delay.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include <linux/timer.h>
 #include <mach/hardware.h>
 #include <asm/uaccess.h>
 #include <mach/dma.h>
@@ -143,15 +142,6 @@ static uint8_t servo2gpio[] = {
 };
 #define NUM_SERVOS	(sizeof(servo2gpio)/sizeof(servo2gpio[0]))
 
-// Per-servo timeouts, so we can shut down a servo output after some period
-// without a new command - some people want this because the report servos
-// overheating after a time.
-struct timer_data {
-    struct timer_list timer;
-    unsigned long servo;
-};
-static struct timer_data idle_timer[NUM_SERVOS];
-
 // This struct is used to store all temporary data associated with a given
 // open() of /dev/servoblaster
 struct private_data
@@ -190,19 +180,11 @@ static struct cdev my_cdev;
 static int my_major;
 static int cycle_ticks = 2000;
 static int tick_scale = 6;
-static int idle_timeout = 0;
 
 // This records the written count values so we can display them on a read()
 // call.  Cannot derive data directly from DMA control blocks as current
 // algorithm has a special case for a count of zero.
 static int servo_pos[NUM_SERVOS] = { 0 };
-
-static void servo_timeout(struct timer_list *t)
-{
-	// Clear GPIO output next time round
-	const struct timer_data *tmd = from_timer(tmd, t, timer);
-	ctl->cb[tmd->servo*4+0].dst = ((GPIO_BASE + GPCLR0*4) & 0x00ffffff) | 0x7e000000;
-}
 
 // Wait until we're not processing the given servo (actually wait until
 // we are not processing the low period of the previous servo, or the
@@ -250,17 +232,9 @@ int init_module(void)
 		return res;
 	}
 
-	for (i = 0; i < NUM_SERVOS; i++)
-		timer_setup(&idle_timer[i].timer, servo_timeout, 0);
-
-	if (idle_timeout && idle_timeout < 20) {
-		printk(KERN_WARNING "ServoBlaster: Increased idle timeout to minimum of 20ms\n");
-		idle_timeout = 20;
-	}
-
 	ctldatabase = __get_free_pages(GFP_KERNEL, 0);
-	printk(KERN_INFO "ServoBlaster: Control page is at 0x%lx, cycle_ticks %d, tick_scale %d, idle_timeout %d\n",
-			ctldatabase, cycle_ticks, tick_scale, idle_timeout);
+	printk(KERN_INFO "ServoBlaster: Control page is at 0x%lx, cycle_ticks %d, tick_scale %d\n",
+			ctldatabase, cycle_ticks, tick_scale);
 	if (ctldatabase == 0) {
 		printk(KERN_WARNING "ServoBlaster: alloc_pages failed\n");
 		cdev_del(&my_cdev);
@@ -376,7 +350,6 @@ void cleanup_module(void)
 	// Take care to stop servos with outputs low, so we don't get
 	// spurious movement on module unload
 	for (servo = 0; servo < NUM_SERVOS; servo++) {
-		del_timer(&idle_timer[servo].timer);
 		// Wait until we're not driving this servo
 		if (wait_for_servo(servo))
 			break;
@@ -457,9 +430,6 @@ static int set_servo(int servo, int cnt)
 	}
 	if (wait_for_servo(servo))
 		return -EINTR;
-
-	if (idle_timeout)
-		mod_timer(&idle_timer[servo].timer, jiffies + msecs_to_jiffies(idle_timeout));
 
 	// Normally, the first GPIO transfer sets the output, while the second
 	// clears it after a delay.  For the special case of a delay of 0, we
@@ -560,6 +530,3 @@ MODULE_PARM_DESC(cycle_ticks, "number of ticks per cycle, max pulse is cycle_tic
 
 module_param(tick_scale, int, 0);
 MODULE_PARM_DESC(tick_scale, "scale the tick length, 6 should be 10us");
-
-module_param(idle_timeout, int, 0);
-MODULE_PARM_DESC(idle_timeout, "Idle timeout, after which we turn off a servo output (ms)");
