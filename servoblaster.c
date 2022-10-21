@@ -49,9 +49,15 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/timer.h>
-#include <mach/platform.h>
+#include <mach/hardware.h>
 #include <asm/uaccess.h>
 #include <mach/dma.h>
+#include <linux/platform_data/dma-bcm2708.h>
+
+// check /proc/iomem
+#define BCM2708_PERI_BASE	0x3f000000
+#define GPIO_BASE			0x3f200000
+#define DMA_BASE			0x3f007000
 
 #define GPIO_LEN		0xb4
 #define DMA_LEN			0x24
@@ -110,7 +116,8 @@ static struct file_operations fops =
 // Define REV_1 or REV_2 depending on which rev of Pi you have.  Alternatively
 // just don't try to use P1-13.
 
-//#define REV_1
+// check /proc/cpuinfo
+#define REV_1
 //#define REV_2
 
 // Map servo channels to GPIO pins
