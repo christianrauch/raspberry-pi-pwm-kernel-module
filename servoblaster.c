@@ -97,7 +97,7 @@ static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
 static long dev_ioctl(struct file *, unsigned int, unsigned long);
 
-static struct file_operations fops = 
+static struct file_operations fops =
 {
 	.open = dev_open,
 	.read = dev_read,
@@ -107,7 +107,7 @@ static struct file_operations fops =
 	.compat_ioctl = dev_ioctl,
 };
 
-// Define REV_1 or REV_2 depending on whcih rev of Pi you have.  Alternatively
+// Define REV_1 or REV_2 depending on which rev of Pi you have.  Alternatively
 // just don't try to use P1-13.
 
 //#define REV_1
@@ -221,7 +221,7 @@ static int wait_for_servo(int servo)
 int init_module(void)
 {
 	int res, i, s;
-	
+
 	res = alloc_chrdev_region(&devno, 0, 1, "servoblaster");
 	if (res < 0) {
 		printk(KERN_WARNING "ServoBlaster: Can't allocated device number\n");
@@ -433,7 +433,7 @@ static ssize_t dev_read(struct file *filp, char *buf, size_t count, loff_t *f_po
 	return ret;
 }
 
-static int set_servo(int servo, int cnt) 
+static int set_servo(int servo, int cnt)
 {
 	if (servo < 0 || servo >= NUM_SERVOS) {
 		printk(KERN_WARNING "ServoBlaster: Bad servo number %d\n", servo);
@@ -551,4 +551,3 @@ MODULE_PARM_DESC(tick_scale, "scale the tick length, 6 should be 10us");
 
 module_param(idle_timeout, int, 0);
 MODULE_PARM_DESC(idle_timeout, "Idle timeout, after which we turn off a servo output (ms)");
-
